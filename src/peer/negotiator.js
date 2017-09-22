@@ -114,6 +114,23 @@ class Negotiator extends EventEmitter {
         }
       });
 
+      if (this._pc.getSenders().every(sender => {
+        return sender.track.kind !== 'audio';
+      })) {
+        newStream.getAudioTracks().forEach(track => {
+          this._pc.addTrack(track, newStream);
+        });
+      }
+      if (this._pc.getSenders().every(sender => {
+        return sender.track.kind !== 'video';
+      })) {
+        newStream.getVideoTracks().forEach(track => {
+          this._pc.addTrack(track, newStream);
+        });
+      }
+
+      this._replaceStreamCalled = true;
+
       // We don't actually need to do renegotiation but force it in order to prevent
       // problems with the stream.id being mismatched when renegotiation happens anyways
       this._pc.onnegotiationneeded();
