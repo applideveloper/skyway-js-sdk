@@ -273,6 +273,7 @@ describe('Negotiator', () => {
     });
 
     describe('rtpSenders are supported', () => {
+      let addTrackStub;
       let getSendersStub;
       let removeTrackStub;
       let getAudioTracksStub;
@@ -293,9 +294,11 @@ describe('Negotiator', () => {
 
       beforeEach(() => {
         // We stub everything directly as there is no guarantee that the browser will support them.
+        addTrackStub = sinon.stub();
         getSendersStub = sinon.stub();
         removeTrackStub = sinon.stub();
         negotiationNeededStub = sinon.spy();
+        negotiator._pc.addTrack = addTrackStub;
         negotiator._pc.getSenders = getSendersStub;
         negotiator._pc.removeTrack = removeTrackStub;
         negotiator._pc.onnegotiationneeded = negotiationNeededStub;
@@ -359,6 +362,41 @@ describe('Negotiator', () => {
           assert.equal(removeTrackStub.callCount, 2);
           assert(removeTrackStub.calledWith(audioSender));
           assert(removeTrackStub.calledWith(videoSender));
+        });
+
+        it('should call onnegotiationneeded', () => {
+          negotiator.replaceStream(newStream);
+
+          assert.equal(negotiationNeededStub.callCount, 1);
+        });
+      });
+
+      describe('new stream has larger number of tracks', () => {
+        beforeEach(() => {
+          getSendersStub.returns([audioSender]);
+
+          getVideoTracksStub.returns([videoTrack]);
+          getAudioTracksStub.returns([audioTrack]);
+        });
+
+        it('should call replaceTrack for audio sender', () => {
+          negotiator.replaceStream(newStream);
+
+          assert.equal(audioSender.replaceTrack.callCount, 1);
+          assert(audioSender.replaceTrack.calledWith(audioTrack));
+        });
+
+        it('should not call addTrack for audio sender', () => {
+          negotiator.replaceStream(newStream);
+
+          console.log(negotiator._pc.getSenders());
+          assert(!addTrackStub.calledWith(audioTrack));
+        });
+
+        it('should call addTrack for video sender', () => {
+          negotiator.replaceStream(newStream);
+
+          assert(addTrackStub.calledWith(videoTrack));
         });
 
         it('should call onnegotiationneeded', () => {
