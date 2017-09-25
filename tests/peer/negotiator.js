@@ -279,8 +279,14 @@ describe('Negotiator', () => {
       let getVideoTracksStub;
       let negotiationNeededStub;
 
-      const videoTrack = {};
-      const audioTrack = {};
+      // These values are dummy for assert.
+      const videoTrack = {
+        'video': 'video',
+      };
+      const audioTrack = {
+        'audio': 'audio',
+      };
+
       let audioSender;
       let videoSender;
       let newStream;
