@@ -512,13 +512,7 @@ class Negotiator extends EventEmitter {
     // a chance to trigger (and do nothing) on removeStream.
     setTimeout(() => {
       this._pc.onnegotiationneeded = negotiationNeededHandler;
-      if (this._isAddTrackAvailable) {
-        newStream.getTracks().forEach(track => {
-          this._pc.addTrack(track, newStream);
-        });
-      } else {
-        this._pc.addStream(newStream);
-      }
+      this._pc.addStream(newStream);
     });
   }
 
