@@ -90,6 +90,8 @@ class Negotiator extends EventEmitter {
    * @param {MediaStream} newStream - The stream to replace the old stream with.
    */
   replaceStream(newStream) {
+    // If negotiator is null
+    // or replaceStream was called but `onnegotiationneeded` event has not finished yet.
     if (!this._pc || this._replaceStreamCalled) {
       return;
     }
@@ -97,13 +99,12 @@ class Negotiator extends EventEmitter {
     // Replace the tracks in the rtpSenders if possible.
     // This doesn't require renegotiation.
     // Firefox 53 has both getSenders and getLocalStreams,
-    // but Google Chrome 59 has only getLocalStreams.
+    // but Google Chrome 61 has only getLocalStreams.
     if (this._isRtpSenderAvailable) {
       this._replacePerTrack(newStream);
-      return;
+    } else {
+      this._replacePerStream(newStream);
     }
-
-    this._replacePerStream(newStream);
   }
 
   /**
@@ -453,11 +454,13 @@ class Negotiator extends EventEmitter {
 
     // no video tracks in newStream => remove all RtpSender(.kind = video)
     // otherwise, replace it or create it
+    // We assume that there is at most 1 audio stream and at most 1 video stream in localStreams
     if (vTracks.length === 0) {
       vSenders.forEach(sender => this._pc.removeTrack(sender));
     } else {
       vTracks.forEach((track, idx) => {
         if (vSenders.length === 0) {
+          // no video track in previous stream, so we can't replace it
           this._pc.addTrack(track, newStream);
         } else {
           // need to check id before replace..?
@@ -472,6 +475,7 @@ class Negotiator extends EventEmitter {
     } else {
       aTracks.forEach((track, idx) => {
         if (aSenders.length === 0) {
+          // no audio track in previous stream, so we can't replace it
           this._pc.addTrack(track, newStream);
         } else {
           aSenders[idx].replaceTrack(track);
@@ -483,6 +487,7 @@ class Negotiator extends EventEmitter {
 
     // We don't actually need to do renegotiation but force it in order to prevent
     // problems with the stream.id being mismatched when renegotiation happens anyways
+    // Firefox 55 doesn't trigger onnegotiationneeded event when a track in a stream is removed
     this._pc.onnegotiationneeded();
   }
 
