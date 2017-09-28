@@ -437,47 +437,45 @@ class Negotiator extends EventEmitter {
   }
 
   /**
-   * Check the type exists
-   * @param {RTCPeerConnection} pc
-   * @param {string} trackType - A type of tracks
-   * @return {bool} More than 0 track of the peer connection is trackType or not.
-   * @private
-   */
-  _specificTracksExist(pc, trackType) {
-    return this._pc.getSenders().some(sender => {
-      return sender.track.kind === trackType;
-    });
-  }
-
-  /**
    * Replace the stream being sent with a new one.
    * @param {MediaStream} newStream - The stream to replace the old stream with.
    * @private
    */
   _replacePerTrack(newStream) {
+    const vTracks = newStream.getVideoTracks();
+    const aTracks = newStream.getAudioTracks();
+    let vSenders = [];
+    let aSenders = [];
     this._pc.getSenders().forEach(sender => {
-      let tracks;
-      if (sender.track.kind === 'audio') {
-        tracks = newStream.getAudioTracks();
-      } else if (sender.track.kind === 'video') {
-        tracks = newStream.getVideoTracks();
-      }
-
-      if (tracks && tracks[0]) {
-        sender.replaceTrack(tracks[0]);
-      } else {
-        this._pc.removeTrack(sender);
-      }
+      sender.track.kind === 'video' && vSenders.push(sender);
+      sender.track.kind === 'audio' && aSenders.push(sender);
     });
 
-    if (!this._specificTracksExist(this._pc, 'audio')) {
-      newStream.getAudioTracks().forEach(track => {
-        this._pc.addTrack(track, newStream);
+    // no video tracks in newStream => remove all RtpSender(.kind = video)
+    // otherwise, replace it or create it
+    if (vTracks.length === 0) {
+      vSenders.forEach(sender => this._pc.removeTrack(sender));
+    } else {
+      vTracks.forEach((track, idx) => {
+        if (vSenders.length === 0) {
+          this._pc.addTrack(track, newStream);
+        } else {
+          // need to check id before replace..?
+          vSenders[idx].replaceTrack(track);
+        }
       });
     }
-    if (!this._specificTracksExist(this._pc, 'video')) {
-      newStream.getVideoTracks().forEach(track => {
-        this._pc.addTrack(track, newStream);
+
+    // do the same thing for audio tracks
+    if (aTracks.length === 0) {
+      aSenders.forEach(sender => this._pc.removeTrack(sender));
+    } else {
+      aTracks.forEach((track, idx) => {
+        if (aSenders.length === 0) {
+          this._pc.addTrack(track, newStream);
+        } else {
+          aSenders[idx].replaceTrack(track);
+        }
       });
     }
 
